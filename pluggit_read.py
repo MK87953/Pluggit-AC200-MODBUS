@@ -9,7 +9,7 @@ now = datetime.now()
 print("Wait ", now)
 time.sleep(5)
 
-instrument = minimalmodbus.Instrument('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10KYNFJ-if00-port0', 1)
+instrument = minimalmodbus.Instrument('</dev/ttyXYZ>', 1)
 instrument.serial.baudrate = 19200
 instrument.serial.bytesize = 8
 instrument.serial.parity = serial.PARITY_EVEN

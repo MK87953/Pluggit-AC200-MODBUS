@@ -58,10 +58,10 @@ MODBUS_CONFIG = {
         19: {"name": "Drehzahl Abluftmotor", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "U/min", "icon": "mdi:fan"},
         20: {"name": "Drehzahl Zuluftmotor", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "U/min", "icon": "mdi:fan"},
         21: {"name": "Innentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
-        22: {"name": "Aussentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
-        23: {"name": "Ablufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
+        22: {"name": "Ablufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
+        23: {"name": "Aussentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
         24: {"name": "Zulufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
-        25: {"name": "Einstellung Bypass ", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
+        25: {"name": "Einstellung Bypass", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
         #26: {"name": "Status Vorheizregister", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
         #27: {"name": "Status Nachheizregister", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
     },
@@ -72,7 +72,7 @@ MODBUS_CONFIG = {
         9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
         10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
         11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "min": 0, "max": 2, "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"}, 
+        15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"}, 
         #16: {"name": "Minimaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
         #17: {"name": "Maximaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
         22: {"name": "Bypass Automatik Temperatur Text MIN", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 10, "max": 30, "write_fc": 6, "unit": "°C", "icon": "mdi:thermometer"},
@@ -86,7 +86,7 @@ MODBUS_CONFIG = {
 last_values = {}
 
 # --- MODBUS SETUP ---
-instrument = minimalmodbus.Instrument('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10KYNFJ-if00-port0', 1)
+instrument = minimalmodbus.Instrument('/dev/ttyUSB0', 1)
 instrument.serial.baudrate = 19200
 instrument.serial.bytesize = 8
 instrument.serial.parity = serial.PARITY_EVEN
@@ -135,10 +135,13 @@ def on_message(client, userdata, msg):
 # --- MQTT SETUP ---
 mqtt_client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 mqtt_client.on_message = on_message
+mqtt_client.will_set(MQTT_AVAILABILITY_TOPIC, "offline", retain=True)
 
 try:
     mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
     mqtt_client.loop_start()
+    mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, "online", retain=True)
+
 except Exception:
     exit(1)
 
@@ -163,6 +166,7 @@ def send_discovery_config():
                 "name": cfg["name"],
                 "unique_id": unique_id,
                 "state_topic": state_topic,
+                "availability_topic": MQTT_AVAILABILITY_TOPIC,
                 "device": device_info
             }
             
@@ -210,7 +214,12 @@ def send_discovery_config():
 
             mqtt_client.publish(discovery_topic, json.dumps(config_payload), retain=True)
 
-send_discovery_config()
+def on_connect(client, userdata, flags, reason_code, properties):
+    if reason_code == 0:
+        client.publish(MQTT_AVAILABILITY_TOPIC, "online", retain=True)
+        send_discovery_config() # Sendet Discovery UND abonniert alle /set Topics neu!
+
+mqtt_client.on_connect = on_connect
 
 # Zu Beginn einmal explizit den Port schließen, da minimalmodbus ihn beim Setup öffnet
 try:
@@ -278,6 +287,7 @@ finally:
         instrument.serial.close()
     except Exception:
         pass
+    mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, "offline", retain=True)    
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
 

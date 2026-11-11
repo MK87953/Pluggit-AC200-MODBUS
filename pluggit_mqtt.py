@@ -69,9 +69,9 @@ MODBUS_CONFIG = {
     # 4. HOLDING REGISTER (Sollwerte/Einstellungen - Les- und Schreibbar - FC 3 / Write FC 6)
     "HR": {
         8:  {"name": "Verhältnis Volumenstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": -15, "max": 15, "write_fc": 6, "unit": "%"},
-        9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
         15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"}, 
         #16: {"name": "Minimaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
         #17: {"name": "Maximaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},

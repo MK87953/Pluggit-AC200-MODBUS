@@ -21,62 +21,64 @@ MQTT_AVAILABILITY_TOPIC = f"{MQTT_TOPIC_BASE}/AC200/status"
 MODBUS_CONFIG = {
     # 1. DISCRETES INPUT (Digitale Statuswerte - Nur Lesbar - FC 2)
     "DI": {
-        1:  {"name": "Geraeteversion Typ", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        2:  {"name": "Freier Kontakt Status", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        5:  {"name": "Frostschutzmodus Aktiv", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        6:  {"name": "Status Abluftventilator", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        7:  {"name": "Status Zuluftventilator", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        9:  {"name": "Status Bypass", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        10: {"name": "Status Sensor Innentemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        11: {"name": "Status Sensor Aussentemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        12: {"name": "Status Sensor Ablufttemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        13: {"name": "Status Sensor Fortlufttemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
-        14: {"name": "Filteralarm Status", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
+        #1:  {"name": "Geraeteversion Typ", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
+        #2:  {"name": "Freier Kontakt Status", "type": "bit", "fc": 2, "ha_type": "binary_sensor"},
+        5:  {"name": "Frostschutzmodus Aktiv", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "invert": True, "device_class": "cold"},
+        6:  {"name": "Status Abluftventilator", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        7:  {"name": "Status Zuluftventilator", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        9:  {"name": "Status Bypass", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        10: {"name": "Status Sensor Innentemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        11: {"name": "Status Sensor Aussentemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        12: {"name": "Status Sensor Ablufttemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        13: {"name": "Status Sensor Fortlufttemperatur", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem"},
+        14: {"name": "Filteralarm Status", "type": "bit", "fc": 2, "ha_type": "binary_sensor", "device_class": "problem", "icon": "mdi:air-filter"},
     },
     
     # 2. COILS (Schaltbefehle - Les- und Schreibbar - FC 1 / Write FC 5)
     "C": {
-        2:  {"name": "Vorheizregister Aktivierung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
-        3:  {"name": "Nachheizregister Aktivierung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
-        4:  {"name": "Schalter Drehrichtung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
-        6:  {"name": "Auswahl Geraeteversion", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
-        7:  {"name": "Aktivierung Standby Abwesenheit", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
+        #2:  {"name": "Vorheizregister Aktivierung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
+        #3:  {"name": "Nachheizregister Aktivierung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
+        #4:  {"name": "Schalter Drehrichtung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
+        #6:  {"name": "Auswahl Geraeteversion", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
+        #7:  {"name": "Aktivierung Standby Abwesenheit", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
         8:  {"name": "Bypass Automatikregelung", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
         9:  {"name": "Bypass Manueller Modus", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5},
+        12:  {"name": "Filteralarm zurücksetzen", "type": "bit", "fc": 1, "ha_type": "switch", "write_fc": 5, "icon": "mdi:air-filter"},
     },
     
     # 3. INPUT REGISTER (Analoge Messwerte - Nur Lesbar - FC 4)
     "IR": {
-        10: {"name": "Steuerungsart Modus", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor"},
-        12: {"name": "Volumenstrom Phasenverschiebung", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "%"},
-        13: {"name": "Minimaler Luftvolumenstrom", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "m³/h"},
-        14: {"name": "Zeitgesteuerter Intensivlueftung Boost", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "min"},
-        15: {"name": "Freie Kuehlung Status", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor"},
-        16: {"name": "Aktueller Luftvolumenstrom Gesamt", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "m³/h"},
-        17: {"name": "Eingangsregister 17", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor"},
-        19: {"name": "Drehzahl Abluftmotor", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "U/min"},
-        20: {"name": "Drehzahl Zuluftmotor", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "U/min"},
-        21: {"name": "Innentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C"},
-        22: {"name": "Aussentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C"},
-        23: {"name": "Ablufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C"},
-        24: {"name": "Zulufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C"},
-        25: {"name": "Bypass Klappenstellung", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "%"},
-        26: {"name": "Status Vorheizregister", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "%"},
-        27: {"name": "Status Nachheizregister", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "%"},
+        #10: {"name": "Steuerungsart Modus", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor"},
+        #12: {"name": "Volumenstrom Phasenverschiebung", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "%"},
+        #13: {"name": "Luftvolumenstrom Urlaub", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "m³/h"},
+        #14: {"name": "Luftvolumenstrom Winter", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "m³/h"},
+        #15: {"name": "Luftvolumenstrom Sommer", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "m³/h"},
+        16: {"name": "Luftvolumenstrom aktuell", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "m³/h", "icon": "mdi:fan"},
+        #17: {"name": "Eingangsregister 17", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor"},
+        19: {"name": "Drehzahl Abluftmotor", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "U/min", "icon": "mdi:fan"},
+        20: {"name": "Drehzahl Zuluftmotor", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "unit": "U/min", "icon": "mdi:fan"},
+        21: {"name": "Innentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
+        22: {"name": "Aussentemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
+        23: {"name": "Ablufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
+        24: {"name": "Zulufttemperatur", "type": "register", "fc": 4, "decimals": 1, "ha_type": "sensor", "unit": "°C", "icon": "mdi:thermometer"},
+        25: {"name": "Einstellung Bypass ", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
+        #26: {"name": "Status Vorheizregister", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
+        #27: {"name": "Status Nachheizregister", "type": "register", "fc": 4, "decimals": 0, "ha_type": "sensor", "map": {0: "Deaktiviert", 1: "Aktiviert", 2: "Fehler"}},
     },
     
     # 4. HOLDING REGISTER (Sollwerte/Einstellungen - Les- und Schreibbar - FC 3 / Write FC 6)
     "HR": {
-        8:  {"name": "Einstellung Luftvolumenstrom Unsymmetrie", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "%"},
-        9:  {"name": "Sollwert Reduzierte Lueftung", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        10: {"name": "Sollwert Intensivlueftung Boost 30 Min", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        11: {"name": "Sollwert Freie Kuehlung Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 1, "max": 4, "write_fc": 6}, # Stufenwahl 1-4
-        16: {"name": "Minimaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
-        17: {"name": "Maximaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
-        22: {"name": "Bypass Automatik Temperatur Text MIN", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 10, "max": 30, "write_fc": 6, "unit": "°C"},
-        23: {"name": "Bypass Automatik Temperatur Tint MIN", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 10, "max": 30, "write_fc": 6, "unit": "°C"},
-        24: {"name": "Bypass Manueller Timer Laufzeit", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 240, "write_fc": 6, "unit": "min"},
+        8:  {"name": "Verhältnis Volumenstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": -15, "max": 15, "write_fc": 6, "unit": "%"},
+        9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "min": 0, "max": 2, "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"}, 
+        #16: {"name": "Minimaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
+        #17: {"name": "Maximaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
+        22: {"name": "Bypass Automatik Temperatur Text MIN", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 10, "max": 30, "write_fc": 6, "unit": "°C", "icon": "mdi:thermometer"},
+        23: {"name": "Bypass Automatik Temperatur Tint MIN", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 10, "max": 30, "write_fc": 6, "unit": "°C", "icon": "mdi:thermometer"},
+        24: {"name": "Bypass Manueller Timer Laufzeit", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 1, "max": 24, "write_fc": 6, "unit": "h"},
+        31: {"name": "Filter Alarm Einstellungen", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 1, "max": 24, "write_fc": 6, "unit": "Monate", "icon": "mdi:air-filter"},
     }
 }
 
@@ -84,7 +86,7 @@ MODBUS_CONFIG = {
 last_values = {}
 
 # --- MODBUS SETUP ---
-instrument = minimalmodbus.Instrument('/dev/ttyUSB0', 1)
+instrument = minimalmodbus.Instrument('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10KYNFJ-if00-port0', 1)
 instrument.serial.baudrate = 19200
 instrument.serial.bytesize = 8
 instrument.serial.parity = serial.PARITY_EVEN
@@ -164,22 +166,47 @@ def send_discovery_config():
                 "device": device_info
             }
             
-            if cfg["ha_type"] in ["switch", "number"]:
+            # 1. Command-Topic für alle steuerbaren Entitäten anlegen
+            if cfg["ha_type"] in ["switch", "number", "button", "select"]:
                 cmd_topic = f"{state_topic}/set"
                 config_payload["command_topic"] = cmd_topic
                 mqtt_client.subscribe(cmd_topic)
 
+            # 2. Spezielle Einstellungen für Taster ("button")
+            if cfg["ha_type"] == "button":
+                config_payload["payload_press"] = "1"
+                config_payload.pop("state_topic", None)
+
+            # 3. Binäre Werte ("0" und "1")
             if cfg["type"] == "bit":
-                config_payload["payload_on"] = "True"
-                config_payload["payload_off"] = "False"
+                config_payload["payload_on"] = "1"
+                config_payload["payload_off"] = "0"
             
+            # 4. Zahlenregler ("number")
             if cfg["ha_type"] == "number":
                 config_payload["min"] = cfg.get("min", 0)
                 config_payload["max"] = cfg.get("max", 100)
                 config_payload["step"] = 1
 
+            # 5. Optionale Metadaten (Einheit, Geräteklasse, Icon)
             if "unit" in cfg:
                 config_payload["unit_of_measurement"] = cfg["unit"]
+               
+            if "device_class" in cfg:
+                config_payload["device_class"] = cfg["device_class"]
+                
+            if "icon" in cfg:
+                config_payload["icon"] = cfg["icon"]
+                
+            # 6. Werte-Übersetzung ("map") für Sensoren und Auswahlmenüs ("select")
+            if "map" in cfg:
+                map_str = ", ".join([f"{k}: '{v}'" for k, v in cfg["map"].items()])
+                config_payload["value_template"] = f"{{% set mapper = {{{map_str}}} %}} {{{{ mapper.get(value|int, 'Unbekannt') }}}}"
+
+                if cfg["ha_type"] == "select":
+                    config_payload["options"] = list(cfg["map"].values())
+                    rev_map_str = ", ".join([f"'{v}': {k}" for k, v in cfg["map"].items()])
+                    config_payload["command_template"] = f"{{% set mapper = {{{rev_map_str}}} %}} {{{{ mapper.get(value, 0) }}}}"
 
             mqtt_client.publish(discovery_topic, json.dumps(config_payload), retain=True)
 

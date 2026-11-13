@@ -3,6 +3,7 @@ import json
 import minimalmodbus
 import serial
 import time
+import threading
 from datetime import datetime
 import paho.mqtt.client as mqtt
 
@@ -72,7 +73,7 @@ MODBUS_CONFIG = {
         9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
         10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
         11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"}, 
+        15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"},
         #16: {"name": "Minimaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
         #17: {"name": "Maximaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
         22: {"name": "Bypass Automatik Temperatur Text MIN", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 10, "max": 30, "write_fc": 6, "unit": "°C", "icon": "mdi:thermometer"},
@@ -84,6 +85,7 @@ MODBUS_CONFIG = {
 
 # --- ZWISCHENSPEICHER FÜR WERTÄNDERUNGEN ---
 last_values = {}
+modbus_lock = threading.Lock()
 
 # --- MODBUS SETUP ---
 instrument = minimalmodbus.Instrument('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10KYNFJ-if00-port0', 1)
@@ -108,40 +110,38 @@ def on_message(client, userdata, msg):
             expected_cmd_topic = f"{MQTT_TOPIC_BASE}/AC200/{clean_name}/set"
             
             if topic == expected_cmd_topic:
-                try:
-                    # Vor dem Schreiben Port öffnen
-                    instrument.serial.open()
-                    
-                    if cfg["type"] == "bit":
-                        val_to_write = 1 if payload in ["True", "ON", "1"] else 0
-                        instrument.write_bit(addr, val_to_write, functioncode=cfg["write_fc"])
-                    elif cfg["type"] == "register":
-                        val_to_write = int(float(payload))
-                        instrument.write_register(addr, val_to_write, functioncode=cfg["write_fc"], signed=True)
-                        
-                    storage_key = f"{reg_type}_{addr}"
-                    last_values[storage_key] = payload
-                    
-                    client.publish(topic.replace("/set", ""), payload, retain=True)
-                except Exception:
-                    pass
-                finally:
-                    # Nach dem Schreibvorgang Port sofort wieder schließen
+                with modbus_lock:
                     try:
-                        instrument.serial.close()
+                        # Vor dem Schreiben Port öffnen
+                        instrument.serial.open()
+                        
+                        if cfg["type"] == "bit":
+                            val_to_write = 1 if payload in ["True", "ON", "1"] else 0
+                            instrument.write_bit(addr, val_to_write, functioncode=cfg["write_fc"])
+                        elif cfg["type"] == "register":
+                            val_to_write = int(float(payload))
+                            instrument.write_register(addr, val_to_write, functioncode=cfg["write_fc"], signed=True)
+                            
+                        storage_key = f"{reg_type}_{addr}"
+                        last_values[storage_key] = payload
+                        
+                        client.publish(topic.replace("/set", ""), payload, retain=True)
                     except Exception:
                         pass
+                    finally:
+                        # Nach dem Schreibvorgang Port sofort wieder schließen
+                        try:
+                            instrument.serial.close()
+                        except Exception:
+                            pass
 
 # --- MQTT SETUP ---
 mqtt_client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 mqtt_client.on_message = on_message
-mqtt_client.will_set(MQTT_AVAILABILITY_TOPIC, "offline", retain=True)
 
 try:
     mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
     mqtt_client.loop_start()
-    mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, "online", retain=True)
-
 except Exception:
     exit(1)
 
@@ -166,33 +166,23 @@ def send_discovery_config():
                 "name": cfg["name"],
                 "unique_id": unique_id,
                 "state_topic": state_topic,
-                "availability_topic": MQTT_AVAILABILITY_TOPIC,
                 "device": device_info
             }
             
-            # 1. Command-Topic für alle steuerbaren Entitäten anlegen
             if cfg["ha_type"] in ["switch", "number", "button", "select"]:
                 cmd_topic = f"{state_topic}/set"
                 config_payload["command_topic"] = cmd_topic
                 mqtt_client.subscribe(cmd_topic)
 
-            # 2. Spezielle Einstellungen für Taster ("button")
-            if cfg["ha_type"] == "button":
-                config_payload["payload_press"] = "1"
-                config_payload.pop("state_topic", None)
-
-            # 3. Binäre Werte ("0" und "1")
             if cfg["type"] == "bit":
                 config_payload["payload_on"] = "1"
                 config_payload["payload_off"] = "0"
             
-            # 4. Zahlenregler ("number")
             if cfg["ha_type"] == "number":
                 config_payload["min"] = cfg.get("min", 0)
                 config_payload["max"] = cfg.get("max", 100)
                 config_payload["step"] = 1
 
-            # 5. Optionale Metadaten (Einheit, Geräteklasse, Icon)
             if "unit" in cfg:
                 config_payload["unit_of_measurement"] = cfg["unit"]
                
@@ -200,9 +190,8 @@ def send_discovery_config():
                 config_payload["device_class"] = cfg["device_class"]
                 
             if "icon" in cfg:
-                config_payload["icon"] = cfg["icon"]
+                config_payload["icon"] = cfg["icon"]    
                 
-            # 6. Werte-Übersetzung ("map") für Sensoren und Auswahlmenüs ("select")
             if "map" in cfg:
                 map_str = ", ".join([f"{k}: '{v}'" for k, v in cfg["map"].items()])
                 config_payload["value_template"] = f"{{% set mapper = {{{map_str}}} %}} {{{{ mapper.get(value|int, 'Unbekannt') }}}}"
@@ -214,12 +203,7 @@ def send_discovery_config():
 
             mqtt_client.publish(discovery_topic, json.dumps(config_payload), retain=True)
 
-def on_connect(client, userdata, flags, reason_code, properties):
-    if reason_code == 0:
-        client.publish(MQTT_AVAILABILITY_TOPIC, "online", retain=True)
-        send_discovery_config() # Sendet Discovery UND abonniert alle /set Topics neu!
-
-mqtt_client.on_connect = on_connect
+send_discovery_config()
 
 # Zu Beginn einmal explizit den Port schließen, da minimalmodbus ihn beim Setup öffnet
 try:
@@ -227,48 +211,49 @@ try:
 except Exception:
     pass
 
-#time.sleep(4)
+time.sleep(4)
 
 # --- DAUERHAFTE ABFRAGE-SCHLEIFE (LESEN) ---
 try:
     while True:
         timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        log_content = f"--- Durchgang: {timestamp} ---\n"  
-        
-        try:
-            # 1. Port zu Beginn des Durchgangs ÖFFNEN
-            instrument.serial.open()
+        log_content = f"--- Durchgang: {timestamp} ---\n" 
+        with modbus_lock: 
             
-            # 2. Alle Werte zügig nacheinander auslesen
-            for reg_type, addresses in MODBUS_CONFIG.items():
-                for addr, cfg in addresses.items():
-                    clean_name = cfg["name"].replace(" ", "_").replace("?", "")
-                    topic = f"{MQTT_TOPIC_BASE}/AC200/{clean_name}"
-                    storage_key = f"{reg_type}_{addr}"
-
-                    try:
-                        if cfg["type"] == "bit":
-                            value = instrument.read_bit(addr, cfg["fc"])
-                        elif cfg["type"] == "register":
-                            value = instrument.read_register(addr, cfg["decimals"], cfg["fc"], signed=True)
-
-                        log_content += f"{reg_type}{addr} {value}\n"
-
-                        str_value = str(value)
-                        if storage_key not in last_values or last_values[storage_key] != str_value:
-                            mqtt_client.publish(topic, str_value, retain=True)
-                            last_values[storage_key] = str_value
-
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-        finally:
-            # 3. Port am Ende des gesamten Durchgangs SCHLIESSEN
             try:
-                instrument.serial.close()
+                # 1. Port zu Beginn des Durchgangs ÖFFNEN
+                instrument.serial.open()
+                
+                # 2. Alle Werte zügig nacheinander auslesen
+                for reg_type, addresses in MODBUS_CONFIG.items():
+                    for addr, cfg in addresses.items():
+                        clean_name = cfg["name"].replace(" ", "_").replace("?", "")
+                        topic = f"{MQTT_TOPIC_BASE}/AC200/{clean_name}"
+                        storage_key = f"{reg_type}_{addr}"
+    
+                        try:
+                            if cfg["type"] == "bit":
+                                value = instrument.read_bit(addr, cfg["fc"])
+                            elif cfg["type"] == "register":
+                                value = instrument.read_register(addr, cfg["decimals"], cfg["fc"], signed=True)
+    
+                            log_content += f"{reg_type}{addr} {value}\n"
+    
+                            str_value = str(value)
+                            if storage_key not in last_values or last_values[storage_key] != str_value:
+                                mqtt_client.publish(topic, str_value, retain=True)
+                                last_values[storage_key] = str_value
+    
+                        except Exception:
+                            pass
             except Exception:
                 pass
+            finally:
+                # 3. Port am Ende des gesamten Durchgangs SCHLIESSEN
+                try:
+                    instrument.serial.close()
+                except Exception:
+                    pass
         
         # Log-Inhalt in die Datei schreiben
         try:
@@ -287,6 +272,6 @@ finally:
         instrument.serial.close()
     except Exception:
         pass
-    mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, "offline", retain=True)    
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
+

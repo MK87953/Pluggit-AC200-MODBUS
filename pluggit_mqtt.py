@@ -86,7 +86,7 @@ MODBUS_CONFIG = {
 last_values = {}
 
 # --- MODBUS SETUP ---
-instrument = minimalmodbus.Instrument('/dev/ttyUSB0', 1)
+instrument = minimalmodbus.Instrument('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10KYNFJ-if00-port0', 1)
 instrument.serial.baudrate = 19200
 instrument.serial.bytesize = 8
 instrument.serial.parity = serial.PARITY_EVEN
@@ -227,7 +227,7 @@ try:
 except Exception:
     pass
 
-time.sleep(4)
+#time.sleep(4)
 
 # --- DAUERHAFTE ABFRAGE-SCHLEIFE (LESEN) ---
 try:
@@ -290,4 +290,3 @@ finally:
     mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, "offline", retain=True)    
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
-

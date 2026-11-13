@@ -1,0 +1,19 @@
+[Unit]
+Description=Pluggit/ KWL Modbus MQTT Bridge
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/pluggit_mqtt.py
+Restart=always
+RestartSec=5
+User=root
+Environment=PYTHONUNBUFFERED=1
+
+# Hier wird das separate Log-File definiert
+#StandardOutput=file:/dev/shm/lueftung.log
+#StandardError=file:/dev/shm/lueftung.log
+
+[Install]
+WantedBy=multi-user.target
+

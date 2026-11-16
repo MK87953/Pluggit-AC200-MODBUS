@@ -15,10 +15,8 @@ DISCOVERY_PREFIX = "homeassistant"
 POLL_INTERVAL = 60  # Jede Minute abfragen
 LOG_FILE_PATH = "/dev/shm/lueftung.log"
 
-# Neues Status-Topic für die Erreichbarkeit
 MQTT_AVAILABILITY_TOPIC = f"{MQTT_TOPIC_BASE}/AC200/status"
 
-# --- PLUGGIT / SOLER & PALAU DOMEO 210 FL NAMENZUORDNUNG (DEUTSCH) ---
 MODBUS_CONFIG = {
     # 1. DISCRETES INPUT (Digitale Statuswerte - Nur Lesbar - FC 2)
     "DI": {
@@ -70,9 +68,9 @@ MODBUS_CONFIG = {
     # 4. HOLDING REGISTER (Sollwerte/Einstellungen - Les- und Schreibbar - FC 3 / Write FC 6)
     "HR": {
         8:  {"name": "Verhältnis Volumenstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": -15, "max": 15, "write_fc": 6, "unit": "%"},
-        9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
-        11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 100, "write_fc": 6, "unit": "m³/h"},
+        9:  {"name": "Sollwert Stufe 0 - Urlaub Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 85, "write_fc": 6, "unit": "m³/h"},
+        10: {"name": "Sollwert Stufe 1 - Winter Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 85, "write_fc": 6, "unit": "m³/h"},
+        11: {"name": "Sollwert Stufe 2 - Sommer Luftstrom", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 30, "max": 85, "write_fc": 6, "unit": "m³/h"},
         15: {"name": "Luefterstufe Vorgabe", "type": "register", "fc": 3, "decimals": 0, "ha_type": "select", "write_fc": 6, "map": {0: "Urlaub",1: "Winter",2: "Sommer"}, "icon": "mdi:fan"},
         #16: {"name": "Minimaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
         #17: {"name": "Maximaler Sollwert 0-10V", "type": "register", "fc": 3, "decimals": 0, "ha_type": "number", "min": 0, "max": 100, "write_fc": 6},
@@ -83,11 +81,9 @@ MODBUS_CONFIG = {
     }
 }
 
-# --- ZWISCHENSPEICHER FÜR WERTÄNDERUNGEN ---
 last_values = {}
 modbus_lock = threading.Lock()
 
-# --- MODBUS SETUP ---
 instrument = minimalmodbus.Instrument('/dev/ttyUSB', 1)
 instrument.serial.baudrate = 19200
 instrument.serial.bytesize = 8
@@ -96,10 +92,8 @@ instrument.serial.stopbits = 1
 instrument.serial.timeout = 0.25
 instrument.mode = minimalmodbus.MODE_RTU
 
-# WICHTIG: Wir verwalten das Öffnen und Schließen jetzt komplett manuell per Schleife
 instrument.close_port_after_each_call = False
 
-# --- MQTT CALLBACK (SCHREIBEN) ---
 def on_message(client, userdata, msg):
     payload = msg.payload.decode("utf-8")
     topic = msg.topic
@@ -112,7 +106,6 @@ def on_message(client, userdata, msg):
             if topic == expected_cmd_topic:
                 with modbus_lock:
                     try:
-                        # Vor dem Schreiben Port öffnen
                         instrument.serial.open()
                         
                         if cfg["type"] == "bit":
@@ -129,13 +122,11 @@ def on_message(client, userdata, msg):
                     except Exception:
                         pass
                     finally:
-                        # Nach dem Schreibvorgang Port sofort wieder schließen
                         try:
                             instrument.serial.close()
                         except Exception:
                             pass
 
-# --- MQTT SETUP ---
 mqtt_client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 mqtt_client.on_message = on_message
 
@@ -145,7 +136,6 @@ try:
 except Exception:
     exit(1)
 
-# --- HOME ASSISTANT DISCOVERY ---
 def send_discovery_config():
     device_info = {
         "identifiers": ["pluggit_AC200_system"],
@@ -205,7 +195,6 @@ def send_discovery_config():
 
 send_discovery_config()
 
-# Zu Beginn einmal explizit den Port schließen, da minimalmodbus ihn beim Setup öffnet
 try:
     instrument.serial.close()
 except Exception:
@@ -213,7 +202,6 @@ except Exception:
 
 time.sleep(4)
 
-# --- DAUERHAFTE ABFRAGE-SCHLEIFE (LESEN) ---
 try:
     while True:
         timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -221,10 +209,8 @@ try:
         with modbus_lock: 
             
             try:
-                # 1. Port zu Beginn des Durchgangs ÖFFNEN
                 instrument.serial.open()
                 
-                # 2. Alle Werte zügig nacheinander auslesen
                 for reg_type, addresses in MODBUS_CONFIG.items():
                     for addr, cfg in addresses.items():
                         clean_name = cfg["name"].replace(" ", "_").replace("?", "")
@@ -249,20 +235,17 @@ try:
             except Exception:
                 pass
             finally:
-                # 3. Port am Ende des gesamten Durchgangs SCHLIESSEN
                 try:
                     instrument.serial.close()
                 except Exception:
                     pass
-        
-        # Log-Inhalt in die Datei schreiben
+
         try:
             with open(LOG_FILE_PATH, "w") as log_file:
                 log_file.write(log_content)
         except Exception:
             pass
-        
-        # 60 Sekunden warten (währenddessen bleibt der serielle Port zu)
+            
         time.sleep(POLL_INTERVAL)
 
 except KeyboardInterrupt:
@@ -274,4 +257,3 @@ finally:
         pass
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
-
